@@ -1,0 +1,8 @@
+"condition","n","pre_mean","pre_std","pre_mean_pct","post_mean","post_std","post_mean_pct"
+"ane",2,9.5,0.7,95,10,0,100
+"htn",2,10,0,100,9.5,0.7,95
+"pprom",2,8.5,0.7,85,8,0,80
+"qanc",2,9.5,0.7,95,9.5,0.7,95
+"scd",2,8,1.4,80,7.5,0.7,75
+"teen",2,8.5,0.7,85,7.5,2.1,75
+"Overall Average",NA,9,1,90,8.7,1.3,86.7

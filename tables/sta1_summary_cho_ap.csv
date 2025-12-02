@@ -1,0 +1,13 @@
+"district_name","condition","pre_mean","pre_std","pre_mean_pct","post_mean","post_std","post_mean_pct","p_value"
+"Nandurbar","ane",9.5,0.7,95,10,0,100,0.5
+"Nandurbar","htn",10,0,100,9.5,0.7,95,0.5
+"Nandurbar","pprom",8.5,0.7,85,8,0,80,0.5
+"Nandurbar","qanc",9.5,0.7,95,9.5,0.7,95,1
+"Nandurbar","scd",8,1.4,80,7.5,0.7,75,0.711723
+"Nandurbar","teen",8.5,0.7,85,7.5,2.1,75,0.62483
+"Overall Average","ane",9.5,0.7,95,10,0,100,NA
+"Overall Average","htn",10,0,100,9.5,0.7,95,NA
+"Overall Average","pprom",8.5,0.7,85,8,0,80,NA
+"Overall Average","qanc",9.5,0.7,95,9.5,0.7,95,NA
+"Overall Average","scd",8,1.4,80,7.5,0.7,75,NA
+"Overall Average","teen",8.5,0.7,85,7.5,2.1,75,NA
