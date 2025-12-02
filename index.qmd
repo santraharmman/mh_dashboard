@@ -1,0 +1,3626 @@
+---
+title: "Pre and Posttest Analysis - Maharashtra(Nandurbar)"
+format: dashboard
+logo: "plots/ihrptm.jpg"
+fig-width: 10
+fig-height: 8
+dpi: 600
+theme: journal
+css: styles.css
+scrolling: true
+---
+```{r setup}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+library(rio)
+library(dplyr)
+library(ggplot2)
+library(gtsummary)
+library(gt)
+library(tidyr)
+library(viridis)
+
+# Define the file paths
+filepaths <- c(
+  here::here('data','mh_cleaned_data','mo_cleaned_qanc_mh.csv'),
+  here::here('data','mh_cleaned_data','mo_cleaned_htn_mh.csv'),
+  here::here('data','mh_cleaned_data','mo_cleaned_ane_mh.csv'),
+  here::here('data','mh_cleaned_data','mo_cleaned_pprom_mh.csv'),
+  here::here('data','mh_cleaned_data','mo_cleaned_teen_mh.csv'),
+  here::here('data','mh_cleaned_data','mo_cleaned_scd_mh.csv')
+)
+
+# Import all files as data frames
+data_frames <- lapply(filepaths, read.csv)
+
+# Bind all data frames into a single data frame
+df_mo <- do.call(rbind, data_frames)
+
+# Cleaning the data
+df_mo <-
+  df_mo |>
+  janitor::clean_names()
+
+# Remove unwanted columns
+df_mo <- df_mo |> 
+  select(-c("number",
+            "name_post", 
+            "age_post", 
+            "entry_post", 
+            "districts_post", 
+            "phc_name_post", 
+            "experience_post", 
+            "mobile_no_post",
+            "date_post"))
+
+# Districts with district names
+df_mo$age_pre <- df_mo$age_pre |> as.character()
+
+# Ensure `age_pre` is numeric
+df_mo$age_pre <- as.numeric(df_mo$age_pre)
+
+# Current year
+current_year <- as.numeric(format(Sys.Date(), "%Y"))
+
+# Identify values in `age_pre` that are in the year format and convert them to age
+df_mo$age_pre <- ifelse(df_mo$age_pre >= 1900 & df_mo$age_pre <= current_year,
+                        current_year - df_mo$age_pre,
+                        df_mo$age_pre)
+
+# Change the district names and mutate a column with the concerned district names
+df_mo <- df_mo %>%
+  mutate(district_name = case_when(
+    districts_pre == 1 ~ "Nandurbar",
+    TRUE ~ NA_character_
+  ))
+
+# QANC Correct answers
+# Pre
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "qanc", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "qanc", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "qanc", ifelse(q3_pre  == 1, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "qanc", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "qanc", ifelse(q5_pre  == 2, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "qanc", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "qanc", ifelse(q7_pre  == 1, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "qanc", ifelse(q8_pre  == 2, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "qanc", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "qanc", ifelse(q10_pre == 1, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "qanc", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "qanc", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "qanc", ifelse(q3_post  == 1, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "qanc", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "qanc", ifelse(q5_post  == 2, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "qanc", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "qanc", ifelse(q7_post  == 1, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "qanc", ifelse(q8_post  == 2, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "qanc", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "qanc", ifelse(q10_post == 1, 1, 0), q10_post)
+  )
+
+# Anaemia correct answers
+# Pre
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "ane", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "ane", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "ane", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "ane", ifelse(q4_pre  == 4, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "ane", ifelse(q5_pre  == 3, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "ane", ifelse(q6_pre  == 1, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "ane", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "ane", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "ane", ifelse(q9_pre  == 1, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "ane", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "ane", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "ane", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "ane", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "ane", ifelse(q4_post  == 4, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "ane", ifelse(q5_post  == 3, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "ane", ifelse(q6_post  == 1, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "ane", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "ane", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "ane", ifelse(q9_post  == 1, 1, 0), q9_post),
+    q10_post = ifelse(condition == "ane", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# HTN correct answers
+# Pre
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "htn", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "htn", ifelse(q2_pre  == 4, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "htn", ifelse(q3_pre  == 2, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "htn", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "htn", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "htn", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "htn", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "htn", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "htn", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "htn", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "htn", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "htn", ifelse(q2_post  == 4, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "htn", ifelse(q3_post  == 2, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "htn", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "htn", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "htn", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "htn", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "htn", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "htn", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "htn", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# PPROM Correct answers 
+# Pre
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "pprom", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "pprom", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "pprom", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "pprom", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "pprom", ifelse(q5_pre  == 5, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "pprom", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "pprom", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "pprom", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "pprom", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "pprom", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "pprom", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "pprom", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "pprom", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "pprom", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "pprom", ifelse(q5_post  == 5, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "pprom", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "pprom", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "pprom", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "pprom", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "pprom", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# TEEN Correct answers 
+# Pre
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "teen", ifelse(q1_pre  == 2, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "teen", ifelse(q2_pre  == 2, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "teen", ifelse(q3_pre  == 1, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "teen", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "teen", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "teen", ifelse(q6_pre  == 2, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "teen", ifelse(q7_pre  == 1, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "teen", ifelse(q8_pre  == 3, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "teen", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "teen", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "teen", ifelse(q1_post  == 2, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "teen", ifelse(q2_post  == 2, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "teen", ifelse(q3_post  == 1, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "teen", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "teen", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "teen", ifelse(q6_post  == 2, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "teen", ifelse(q7_post  == 1, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "teen", ifelse(q8_post  == 3, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "teen", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "teen", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# SCD Correct answers 
+# Pre 
+df_mo <- df_mo %>%
+  mutate(
+    q1_pre  = ifelse(condition == "scd", ifelse(q1_pre  == 2, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "scd", ifelse(q2_pre  == 4, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "scd", ifelse(q3_pre  == 2, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "scd", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "scd", ifelse(q5_pre  == 2, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "scd", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "scd", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "scd", ifelse(q8_pre  == 3, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "scd", ifelse(q9_pre  == 3, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "scd", ifelse(q10_pre == 2, 1, 0), q10_pre)
+  )
+
+# Post
+df_mo <- df_mo %>%
+  mutate(
+    q1_post  = ifelse(condition == "scd", ifelse(q1_post  == 2, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "scd", ifelse(q2_post  == 4, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "scd", ifelse(q3_post  == 2, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "scd", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "scd", ifelse(q5_post  == 2, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "scd", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "scd", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "scd", ifelse(q8_post  == 3, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "scd", ifelse(q9_post  == 3, 1, 0), q9_post),
+    q10_post = ifelse(condition == "scd", ifelse(q10_post == 2, 1, 0), q10_post)
+  )
+
+# Sum of Pre and post total correct scores
+df_mo <- df_mo %>%
+  mutate(
+    pre_total_correct  = rowSums(select(., starts_with("q") & ends_with("pre"))),
+    post_total_correct = rowSums(select(., starts_with("q") & ends_with("post")))
+  )
+
+df_mo <- df_mo |> 
+  mutate(relative_change = post_total_correct - pre_total_correct)
+
+# Adding relative change column and creating code for the same
+df_mo <- df_mo %>%
+  mutate(rc_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "-1 to -2",
+    relative_change %in% c(1, 2) ~ "1 to 2",
+    relative_change >= 3 ~ "+3 and above",
+    relative_change <= -3 ~ "-3 and below",
+    TRUE ~ NA_character_
+  ))
+
+df_mo <- df_mo %>%
+  mutate(rc_positive_negative_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "Negative change",
+    relative_change %in% c(1, 2) ~ "Positive change",
+    relative_change >= 3 ~ "Positive change",
+    relative_change <= -3 ~ "Negative change",
+    TRUE ~ NA_character_
+  ))
+
+# Create summary statistics grouped by district_name and condition
+sta1_mo <- df_mo %>%
+  group_by(district_name, condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    p_value = ifelse(
+      sum(!is.na(pre_total_correct)) > 1 & sum(!is.na(post_total_correct)) > 1, 
+      round(t.test(pre_total_correct, post_total_correct)$p.value, 6), 
+      NA )
+  )
+
+# Calculate state average (overall mean, std, and percentage grouped by condition)
+state_avg_mo <- df_mo %>%
+  group_by(condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(district_name = "Overall Average")
+
+# Combine district-level and state-level data
+sta1_mo <- bind_rows(sta1_mo, state_avg_mo)
+
+# Save sta1 as a CSV file
+write.csv(sta1_mo, "tables/sta1_summary_mo_mh.csv", row.names = FALSE)
+
+# Overall mean, std, and percentage grouped by condition
+sta2_mo <- df_mo %>%
+  group_by(condition) %>%
+  summarise(
+    n           = n(),
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  )
+
+# Calculate state average (same as above)
+state_avg_mo <- df_mo %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(condition = "Overall Average")
+
+# Combine condition-level and state-level data
+sta2_mo <- bind_rows(sta2_mo, state_avg_mo)
+
+# Save sta2 as a CSV file
+write.csv(sta2_mo, "tables/sta2_summary_mo_mh.csv", row.names = FALSE)
+
+# Reorder condition factor based on post-test mean percentage in descending order
+sta2_mo <- sta2_mo %>%
+  arrange(desc(post_mean_pct)) %>%
+  mutate(condition = factor(condition, levels = condition))
+
+# Reshape the data from wide to long format
+sta2_long_mo <- tidyr::pivot_longer(sta2_mo, 
+                                    cols = c("pre_mean_pct", "post_mean_pct"), 
+                                    names_to = "Time", 
+                                    values_to = "Mean_Pct")
+
+# Calculate the gain in knowledge for each condition
+knowledge_gain_mo <- sta2_mo %>%
+  mutate(Gain = post_mean_pct - pre_mean_pct) %>%
+  select(condition, Gain)
+
+# Reorder 'Time' factor levels to ensure 'pre' comes before 'post'
+sta2_long_mo$Time <- factor(sta2_long_mo$Time, levels = c("pre_mean_pct", "post_mean_pct"))
+
+# Combine data for all conditions
+relative_change_combined_mo <- df_mo %>%
+  count(condition, rc_positive_negative_code) %>%
+  group_by(condition) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Reorder 'condition' based on descending percentage of "Positive change"
+positive_order_mo <- relative_change_combined_mo %>%
+  filter(rc_positive_negative_code == "Positive change") %>%
+  arrange(percentage) %>%
+  pull(condition)
+
+relative_change_combined_mo <- relative_change_combined_mo %>%
+  mutate(condition = factor(condition, levels = positive_order_mo))
+
+# Replace condition abbreviations with full names
+sta2_mo <- sta2_mo %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Mean pre post percentage
+# Create a new column to differentiate the state average from other conditions
+sta2_long_mo <- sta2_long_mo %>%
+  mutate(state_avg = ifelse(condition == "Overall Average", "Overall Average", "Conditions"))
+
+# Create the ggplot bar chart with adjustments for spacing and legibility
+pre_post_mean_pct_mo <- ggplot(sta2_long_mo, aes(x = condition, y = Mean_Pct, fill = interaction(Time, state_avg))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_manual(values = c("pre_mean_pct.Conditions" = "blue", 
+                               "post_mean_pct.Conditions" = "orange",
+                               "pre_mean_pct.Overall Average" = "lightskyblue", 
+                               "post_mean_pct.Overall Average" = "lightgreen")) +
+  geom_text(aes(label = round(Mean_Pct, 1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.5) +
+  labs(x = "Condition", y = "Mean %") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    plot.margin = margin(10, 20, 10, 20),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) +
+  annotate("text", 
+           x = knowledge_gain_mo$condition, 
+           y = -5,
+           label = paste0(round(knowledge_gain_mo$Gain, 1), "%"),
+           size = 3.5, 
+           color = "red")
+
+# Save the plot in the "plots" directory
+ggsave("plots/pre_post_mean_pct_mo_mh.png", 
+       plot = pre_post_mean_pct_mo, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+## Relative Change
+plot_relative_change_mo <- ggplot(relative_change_combined_mo, aes(x = percentage, y = condition, fill = rc_positive_negative_code)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            hjust = -0.2, 
+            size = 3) +
+  labs(x = "Percentage (%)", y = "Condition") +
+  scale_fill_manual(values = c("Positive change" = "darkgreen", 
+                               "Negative change" = "red", 
+                               "No Change" = "orange")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/plot_relative_change_mo_mh.png", 
+       plot = plot_relative_change_mo, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+# Add condition names
+relative_change_combined_mo <- relative_change_combined_mo %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Filter for 'Positive change'
+positive_changes_mo <- relative_change_combined_mo %>% 
+  filter(rc_positive_negative_code == "Positive change")
+
+# Find the index of the maximum percentage
+max_index_mo <- which.max(positive_changes_mo$percentage)
+
+# Extract the row with the highest percentage
+highest_positive_change_mo <- positive_changes_mo[max_index_mo, ]
+
+# Extract the corresponding condition name
+condition_name1_mo <- highest_positive_change_mo$condition_name
+
+# Filter for 'Negative change'
+negative_changes_mo <- relative_change_combined_mo %>% 
+  filter(rc_positive_negative_code == "Negative change")
+
+# Find the index of the maximum percentage
+max_index_mo <- which.max(negative_changes_mo$percentage)
+
+# Extract the row with the highest percentage
+highest_negative_change_mo <- negative_changes_mo[max_index_mo, ]
+
+# Extract the corresponding condition name
+condition_name_neg_mo <- highest_negative_change_mo$condition_name
+
+# Calculate the district-wise mean percentage for pre and post test scores
+district_wise_combined_mo <- df_mo |>
+  group_by(district_name) |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE))
+
+# Calculate Overall Average and add it to the data
+overall_avg_mo <- df_mo |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE)) |>
+  mutate(district_name = "Overall Average")
+
+# Combine the overall average with the district-wise data
+district_wise_combined_mo <- bind_rows(district_wise_combined_mo, overall_avg_mo)
+
+# Reorder district_name factor by post-test mean percentage in descending order
+district_wise_combined_mo <- district_wise_combined_mo |>
+  arrange(desc(mean_post_test)) |>
+  mutate(district_name = factor(district_name, levels = district_name))
+
+# Reshape the data to long format
+district_wise_combined_long_mo <- district_wise_combined_mo |>
+  pivot_longer(cols = starts_with("mean_"), names_to = "test_type", values_to = "mean_percentage")
+
+# Reorder 'test_type' factor levels to ensure 'pre' comes before 'post'
+district_wise_combined_long_mo$test_type <- factor(district_wise_combined_long_mo$test_type, 
+                                                   levels = c("mean_pre_test", "mean_post_test"),
+                                                   labels = c("pre", "post"))
+
+# Create a new column for color mapping based on test type and overall average
+district_wise_combined_long_mo <- district_wise_combined_long_mo |>
+  mutate(color_group = case_when(
+    district_name == "Overall Average" & test_type == "pre"  ~ "Overall Average Pre",
+    district_name == "Overall Average" & test_type == "post" ~ "Overall Average Post",
+    test_type == "pre"  ~ "Pre",
+    test_type == "post" ~ "Post",
+    TRUE ~ "Other"
+  ))
+
+# Reorder district names based on "Post" mean percentage in descending order
+district_wise_combined_long_mo <- district_wise_combined_long_mo %>%
+  dplyr::mutate(post_percentage = ifelse(color_group == "Post", mean_percentage, NA)) %>%
+  dplyr::group_by(district_name) %>%
+  dplyr::mutate(post_percentage_max = max(post_percentage, na.rm = TRUE)) %>%
+  dplyr::arrange(dplyr::desc(post_percentage_max)) %>%
+  dplyr::mutate(district_name = factor(district_name, levels = unique(district_name))) %>%
+  dplyr::select(-post_percentage, -post_percentage_max)
+
+# Set factor levels to ensure 'Pre' comes before 'Post' for each district
+district_wise_combined_long_mo$color_group <- factor(district_wise_combined_long_mo$color_group, 
+                                                     levels = c("Pre", "Post", "Overall Average Pre", "Overall Average Post"))
+
+# Create the ggplot bar chart
+districtwise_combined_percentage_plot_mo <- ggplot(district_wise_combined_long_mo, aes(x = district_name, y = mean_percentage, fill = color_group)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.7) +
+  geom_text(aes(label = round(mean_percentage, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5,
+            size = 3) +
+  labs(x = "District Name",
+       y = "Mean Percentage Score",
+       fill = "Test Type") +
+  scale_fill_manual(values = c("Pre" = "coral", "Post" = "cyan3", 
+                               "Overall Average Pre" = "purple", "Overall Average Post" = "blue")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/districtwise_combined_percentage_plot_mo_mh.png", 
+       plot = districtwise_combined_percentage_plot_mo, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+#### Question wise analysis
+# QANC
+df_qanc_mo <- subset(df_mo, condition == "qanc")
+total_n_mo <- nrow(df_qanc_mo)
+
+st3_qanc_mo <- data.frame(
+  question = paste("Q", 1:10),
+  qanc_pre = c(
+    (sum(df_qanc_mo$q1_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q2_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q3_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q4_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q5_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q6_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q7_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q8_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q9_pre)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q10_pre) / total_n_mo) * 100
+  ),
+  qanc_post = c(
+    (sum(df_qanc_mo$q1_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q2_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q3_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q4_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q5_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q6_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q7_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q8_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q9_post)  / total_n_mo) * 100,
+    (sum(df_qanc_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+# Anaemia
+df_ane_mo <- subset(df_mo, condition == "ane")
+total_n_mo <- nrow(df_ane_mo)
+
+st3_ane_mo <- data.frame(
+  question = paste("Q", 1:10),
+  ane_pre = c(
+    (sum(df_ane_mo$q1_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q2_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q3_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q4_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q5_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q6_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q7_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q8_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q9_pre)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q10_pre) / total_n_mo) * 100
+  ),
+  ane_post = c(
+    (sum(df_ane_mo$q1_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q2_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q3_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q4_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q5_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q6_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q7_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q8_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q9_post)  / total_n_mo) * 100,
+    (sum(df_ane_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+# Hypertension
+df_htn_mo <- subset(df_mo, condition == "htn")
+total_n_mo <- nrow(df_htn_mo)
+
+st3_htn_mo <- data.frame(
+  question = paste("Q", 1:10),
+  htn_pre = c(
+    (sum(df_htn_mo$q1_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q2_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q3_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q4_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q5_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q6_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q7_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q8_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q9_pre)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q10_pre) / total_n_mo) * 100
+  ),
+  htn_post = c(
+    (sum(df_htn_mo$q1_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q2_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q3_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q4_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q5_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q6_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q7_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q8_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q9_post)  / total_n_mo) * 100,
+    (sum(df_htn_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+## Preterm labor and PPROM
+df_pprom_mo <- subset(df_mo, condition == "pprom")
+total_n_mo <- nrow(df_pprom_mo)
+
+st3_pprom_mo <- data.frame(
+  question = paste("Q", 1:10),
+  pprom_pre = c(
+    (sum(df_pprom_mo$q1_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q2_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q3_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q4_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q5_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q6_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q7_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q8_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q9_pre)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q10_pre) / total_n_mo) * 100
+  ),
+  pprom_post = c(
+    (sum(df_pprom_mo$q1_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q2_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q3_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q4_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q5_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q6_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q7_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q8_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q9_post)  / total_n_mo) * 100,
+    (sum(df_pprom_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+## Teenage Pregnancy
+df_teen_mo <- subset(df_mo, condition == "teen")
+total_n_mo <- nrow(df_teen_mo)
+
+st3_teen_mo <- data.frame(
+  question = paste("Q", 1:10),
+  teen_pre = c(
+    (sum(df_teen_mo$q1_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q2_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q3_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q4_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q5_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q6_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q7_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q8_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q9_pre)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q10_pre) / total_n_mo) * 100
+  ),
+  teen_post = c(
+    (sum(df_teen_mo$q1_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q2_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q3_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q4_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q5_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q6_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q7_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q8_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q9_post)  / total_n_mo) * 100,
+    (sum(df_teen_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+##Sickle Cell Disease (SCD)
+# Filter for 'scd' condition
+df_scd_mo <- subset(df_mo, condition == "scd")
+
+# Calculate total_n for the filtered data
+total_n_mo <- nrow(df_scd_mo)
+
+# Create the data frame with pre and post percentages for each question
+st3_scd_mo <- data.frame(
+  question = paste("Q", 1:10),
+  scd_pre = c(
+    (sum(df_scd_mo$q1_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q2_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q3_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q4_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q5_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q6_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q7_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q8_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q9_pre) / total_n_mo) * 100,
+    (sum(df_scd_mo$q10_pre) / total_n_mo) * 100
+  ),
+  scd_post = c(
+    (sum(df_scd_mo$q1_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q2_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q3_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q4_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q5_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q6_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q7_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q8_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q9_post) / total_n_mo) * 100,
+    (sum(df_scd_mo$q10_post) / total_n_mo) * 100
+  )
+)
+
+# Combine the data frames using cbind
+df_questions_combined_mo <- cbind(
+  st3_qanc_mo[, c("question", "qanc_pre", "qanc_post")],
+  st3_ane_mo[, c("ane_pre", "ane_post")],
+  st3_htn_mo[, c("htn_pre", "htn_post")],
+  st3_pprom_mo[, c("pprom_pre", "pprom_post")],
+  st3_teen_mo[, c("teen_pre", "teen_post")],
+  st3_scd_mo[, c("scd_pre", "scd_post")]
+)
+
+# Round all percentage columns to 1 decimal place
+df_questions_combined_mo[, 2:ncol(df_questions_combined_mo)] <- 
+  round(df_questions_combined_mo[, 2:ncol(df_questions_combined_mo)], 1)
+
+# Save as CSV
+write.csv(df_questions_combined_mo, "tables/df_questions_combined_mo_mh.csv", row.names = FALSE)
+
+# Create a gt table and apply some custom formatting
+df_questions_combined_mo_gt <- df_questions_combined_mo %>%
+  gt() %>%
+  cols_label(
+    question = "Question",
+    qanc_pre = "QANC Pre",
+    qanc_post = "QANC Post",
+    ane_pre = "ANE Pre",
+    ane_post = "ANE Post",
+    htn_pre = "HTN Pre",
+    htn_post = "HTN Post",
+    pprom_pre = "PPROM Pre",
+    pprom_post = "PPROM Post",
+    teen_pre = "TEEN Pre",
+    teen_post = "TEEN Post",
+    scd_pre = "SCD Pre",
+    scd_post = "SCD Post"
+  ) %>%
+  tab_spanner(
+    label = "Pre-Post Score Percentage",
+    columns = c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+                "htn_pre", "htn_post","pprom_pre", "pprom_post",
+                "teen_pre", "teen_post", "scd_pre", "scd_post")
+  )
+
+# Apply tab_style() to highlight cells with values < 50
+for (col in c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+              "htn_pre", "htn_post", "pprom_pre", "pprom_post",
+              "teen_pre", "teen_post", "scd_pre", "scd_post")) {
+  df_questions_combined_mo_gt <- df_questions_combined_mo_gt %>%
+    tab_style(
+      style = list(
+        cell_fill(color = "yellow"),
+        cell_text(weight = "bold")
+      ),
+      locations = cells_body(
+        columns = col, 
+        rows = df_questions_combined_mo[[col]] < 50
+      )
+    )
+}
+
+# Save the raw data frame, not the gt table (gt objects cannot be saved as CSV properly)
+write.csv(df_questions_combined_mo, "tables/df_questions_combined_mo_mh_gt.csv", row.names = FALSE)
+
+
+```
+
+
+```{r setup1}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Define the file paths
+filepaths <- c(
+  here::here('data','mh_cleaned_data','sn_cleaned_qanc_mh.csv'),
+  here::here('data','mh_cleaned_data','sn_cleaned_htn_mh.csv'),
+  here::here('data','mh_cleaned_data','sn_cleaned_ane_mh.csv'),
+  here::here('data','mh_cleaned_data','sn_cleaned_pprom_mh.csv'),
+  here::here('data','mh_cleaned_data','sn_cleaned_teen_mh.csv'),
+  here::here('data','mh_cleaned_data','sn_cleaned_scd_mh.csv')
+)
+
+# Import all files as data frames
+data_frames <- lapply(filepaths, read.csv)
+
+# Bind all data frames into a single data frame
+df_sn <- do.call(rbind, data_frames)
+
+# Cleaning the data
+df_sn <-
+  df_sn |>
+  janitor::clean_names()
+
+# Remove unwanted columns
+df_sn <- df_sn |> 
+  select(-c("number",
+            "name_post", 
+            "age_post", 
+            "entry_post", 
+            "districts_post", 
+            "experience_post", 
+            "mobile_no_post",
+            "date_post"))
+
+# Districts with district names
+df_sn$age_pre <- df_sn$age_pre |> as.character()
+
+# Ensure `age_pre` is numeric
+df_sn$age_pre <- as.numeric(df_sn$age_pre)
+
+# Current year
+current_year <- as.numeric(format(Sys.Date(), "%Y"))
+
+# Identify values in `age_pre` that are in the year format and convert them to age
+df_sn$age_pre <- ifelse(df_sn$age_pre >= 1900 & df_sn$age_pre <= current_year,
+                        current_year - df_sn$age_pre,
+                        df_sn$age_pre)
+
+# Change the district names and mutate a column with the concerned district names
+df_sn <- df_sn %>%
+  mutate(district_name = case_when(
+    districts_pre == 1 ~ "Nandurbar",
+    TRUE ~ NA_character_
+  ))
+
+# QANC Correct answers
+# Pre
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "qanc", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "qanc", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "qanc", ifelse(q3_pre  == 1, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "qanc", ifelse(q4_pre  == 4, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "qanc", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "qanc", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "qanc", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "qanc", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "qanc", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "qanc", ifelse(q10_pre == 1, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "qanc", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "qanc", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "qanc", ifelse(q3_post  == 1, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "qanc", ifelse(q4_post  == 4, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "qanc", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "qanc", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "qanc", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "qanc", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "qanc", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "qanc", ifelse(q10_post == 1, 1, 0), q10_post)
+  )
+
+# Anaemia correct answers
+# Pre
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "ane", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "ane", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "ane", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "ane", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "ane", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "ane", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "ane", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "ane", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "ane", ifelse(q9_pre  == 5, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "ane", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "ane", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "ane", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "ane", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "ane", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "ane", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "ane", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "ane", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "ane", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "ane", ifelse(q9_post  == 5, 1, 0), q9_post),
+    q10_post = ifelse(condition == "ane", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# HTN correct answers
+# Pre
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "htn", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "htn", ifelse(q2_pre  == 4, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "htn", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "htn", ifelse(q4_pre  == 3, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "htn", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "htn", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "htn", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "htn", ifelse(q8_pre  == 3, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "htn", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "htn", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "htn", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "htn", ifelse(q2_post  == 4, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "htn", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "htn", ifelse(q4_post  == 3, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "htn", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "htn", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "htn", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "htn", ifelse(q8_post  == 3, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "htn", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "htn", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# PPROM Correct answers 
+# Pre
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "pprom", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "pprom", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "pprom", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "pprom", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "pprom", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "pprom", ifelse(q6_pre  == 1, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "pprom", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "pprom", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "pprom", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "pprom", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "pprom", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "pprom", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "pprom", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "pprom", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "pprom", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "pprom", ifelse(q6_post  == 1, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "pprom", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "pprom", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "pprom", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "pprom", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# TEEN Correct answers 
+# Pre
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "teen", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "teen", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "teen", ifelse(q3_pre  == 2, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "teen", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "teen", ifelse(q5_pre  == 2, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "teen", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "teen", ifelse(q7_pre  == 1, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "teen", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "teen", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "teen", ifelse(q10_pre == 2, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "teen", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "teen", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "teen", ifelse(q3_post  == 2, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "teen", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "teen", ifelse(q5_post  == 2, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "teen", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "teen", ifelse(q7_post  == 1, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "teen", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "teen", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "teen", ifelse(q10_post == 2, 1, 0), q10_post)
+  )
+
+# SCD Correct answers 
+# Pre 
+df_sn <- df_sn %>%
+  mutate(
+    q1_pre  = ifelse(condition == "scd", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "scd", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "scd", ifelse(q3_pre  == 3, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "scd", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "scd", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "scd", ifelse(q6_pre  == 2, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "scd", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "scd", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "scd", ifelse(q9_pre  == 1, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "scd", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_sn <- df_sn %>%
+  mutate(
+    q1_post  = ifelse(condition == "scd", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "scd", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "scd", ifelse(q3_post  == 3, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "scd", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "scd", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "scd", ifelse(q6_post  == 2, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "scd", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "scd", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "scd", ifelse(q9_post  == 1, 1, 0), q9_post),
+    q10_post = ifelse(condition == "scd", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# Sum of Pre and post total correct scores
+df_sn <- df_sn %>%
+  mutate(
+    pre_total_correct  = rowSums(select(., starts_with("q") & ends_with("pre"))),
+    post_total_correct = rowSums(select(., starts_with("q") & ends_with("post")))
+  )
+
+df_sn <- df_sn |> 
+  mutate(relative_change = post_total_correct - pre_total_correct)
+
+# Adding relative change column and creating code for the same
+df_sn <- df_sn %>%
+  mutate(rc_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "-1 to -2",
+    relative_change %in% c(1, 2) ~ "1 to 2",
+    relative_change >= 3 ~ "+3 and above",
+    relative_change <= -3 ~ "-3 and below",
+    TRUE ~ NA_character_
+  ))
+
+df_sn <- df_sn %>%
+  mutate(rc_positive_negative_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "Negative change",
+    relative_change %in% c(1, 2) ~ "Positive change",
+    relative_change >= 3 ~ "Positive change",
+    relative_change <= -3 ~ "Negative change",
+    TRUE ~ NA_character_
+  ))
+
+# Create summary statistics grouped by district_name and condition
+sta1_sn <- df_sn %>%
+  group_by(district_name, condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    p_value = ifelse(
+      sum(!is.na(pre_total_correct)) > 1 & sum(!is.na(post_total_correct)) > 1, 
+      round(t.test(pre_total_correct, post_total_correct)$p.value, 6), 
+      NA )
+  )
+
+# Calculate state average (overall mean, std, and percentage grouped by condition)
+state_avg_sn <- df_sn %>%
+  group_by(condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(district_name = "Overall Average")
+
+# Combine district-level and state-level data
+sta1_sn <- bind_rows(sta1_sn, state_avg_sn)
+
+# Save sta1 as a CSV file
+write.csv(sta1_sn, "tables/sta1_summary_sn_mh.csv", row.names = FALSE)
+
+# Overall mean, std, and percentage grouped by condition
+sta2_sn <- df_sn %>%
+  group_by(condition) %>%
+  summarise(
+    n           = n(),
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  )
+
+# Calculate state average (same as above)
+state_avg_sn <- df_sn %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(condition = "Overall Average")
+
+# Combine condition-level and state-level data
+sta2_sn <- bind_rows(sta2_sn, state_avg_sn)
+
+# Save sta2 as a CSV file
+write.csv(sta2_sn, "tables/sta2_summary_sn_mh.csv", row.names = FALSE)
+
+# Reorder condition factor based on post-test mean percentage in descending order
+sta2_sn <- sta2_sn %>%
+  arrange(desc(post_mean_pct)) %>%
+  mutate(condition = factor(condition, levels = condition))
+
+# Reshape the data from wide to long format
+sta2_long_sn <- tidyr::pivot_longer(sta2_sn, 
+                                    cols = c("pre_mean_pct", "post_mean_pct"), 
+                                    names_to = "Time", 
+                                    values_to = "Mean_Pct")
+
+# Calculate the gain in knowledge for each condition
+knowledge_gain_sn <- sta2_sn %>%
+  mutate(Gain = post_mean_pct - pre_mean_pct) %>%
+  select(condition, Gain)
+
+# Reorder 'Time' factor levels to ensure 'pre' comes before 'post'
+sta2_long_sn$Time <- factor(sta2_long_sn$Time, levels = c("pre_mean_pct", "post_mean_pct"))
+
+# Combine data for all conditions
+relative_change_combined_sn <- df_sn %>%
+  count(condition, rc_positive_negative_code) %>%
+  group_by(condition) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Reorder 'condition' based on descending percentage of "Positive change"
+positive_order_sn <- relative_change_combined_sn %>%
+  filter(rc_positive_negative_code == "Positive change") %>%
+  arrange(percentage) %>%
+  pull(condition)
+
+relative_change_combined_sn <- relative_change_combined_sn %>%
+  mutate(condition = factor(condition, levels = positive_order_sn))
+
+# Replace condition abbreviations with full names
+sta2_sn <- sta2_sn %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Mean pre post percentage
+# Create a new column to differentiate the state average from other conditions
+sta2_long_sn <- sta2_long_sn %>%
+  mutate(state_avg = ifelse(condition == "Overall Average", "Overall Average", "Conditions"))
+
+# Create the ggplot bar chart with adjustments for spacing and legibility
+pre_post_mean_pct_sn <- ggplot(sta2_long_sn, aes(x = condition, y = Mean_Pct, fill = interaction(Time, state_avg))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_manual(values = c("pre_mean_pct.Conditions" = "blue", 
+                               "post_mean_pct.Conditions" = "orange",
+                               "pre_mean_pct.Overall Average" = "lightskyblue", 
+                               "post_mean_pct.Overall Average" = "lightgreen")) +
+  geom_text(aes(label = round(Mean_Pct, 1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.5) +
+  labs(x = "Condition", y = "Mean %") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    plot.margin = margin(10, 20, 10, 20),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) +
+  annotate("text", 
+           x = knowledge_gain_sn$condition, 
+           y = -5,
+           label = paste0(round(knowledge_gain_sn$Gain, 1), "%"),
+           size = 3.5, 
+           color = "red")
+
+# Save the plot in the "plots" directory
+ggsave("plots/pre_post_mean_pct_sn_mh.png", 
+       plot = pre_post_mean_pct_sn, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+## Relative Change
+plot_relative_change_sn <- ggplot(relative_change_combined_sn, aes(x = percentage, y = condition, fill = rc_positive_negative_code)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            hjust = -0.2, 
+            size = 3) +
+  labs(x = "Percentage (%)", y = "Condition") +
+  scale_fill_manual(values = c("Positive change" = "darkgreen", 
+                               "Negative change" = "red", 
+                               "No Change" = "orange")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/plot_relative_change_sn_mh.png", 
+       plot = plot_relative_change_sn, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+# Add condition names
+relative_change_combined_sn <- relative_change_combined_sn %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Filter for 'Positive change'
+positive_changes_sn <- relative_change_combined_sn %>% 
+  filter(rc_positive_negative_code == "Positive change")
+
+# Find the index of the maximum percentage
+max_index_sn <- which.max(positive_changes_sn$percentage)
+
+# Extract the row with the highest percentage
+highest_positive_change_sn <- positive_changes_sn[max_index_sn, ]
+
+# Extract the corresponding condition name
+condition_name1_sn <- highest_positive_change_sn$condition_name
+
+# Filter for 'Negative change'
+negative_changes_sn <- relative_change_combined_sn %>% 
+  filter(rc_positive_negative_code == "Negative change")
+
+# Find the index of the maximum percentage
+max_index_sn <- which.max(negative_changes_sn$percentage)
+
+# Extract the row with the highest percentage
+highest_negative_change_sn <- negative_changes_sn[max_index_sn, ]
+
+# Extract the corresponding condition name
+condition_name_neg_sn <- highest_negative_change_sn$condition_name
+
+# Calculate the district-wise mean percentage for pre and post test scores
+district_wise_combined_sn <- df_sn |>
+  group_by(district_name) |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE))
+
+# Calculate Overall Average and add it to the data
+overall_avg_sn <- df_sn |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE)) |>
+  mutate(district_name = "Overall Average")
+
+# Combine the overall average with the district-wise data
+district_wise_combined_sn <- bind_rows(district_wise_combined_sn, overall_avg_sn)
+
+# Reorder district_name factor by post-test mean percentage in descending order
+district_wise_combined_sn <- district_wise_combined_sn |>
+  arrange(desc(mean_post_test)) |>
+  mutate(district_name = factor(district_name, levels = district_name))
+
+# Reshape the data to long format
+district_wise_combined_long_sn <- district_wise_combined_sn |>
+  pivot_longer(cols = starts_with("mean_"), names_to = "test_type", values_to = "mean_percentage")
+
+# Reorder 'test_type' factor levels to ensure 'pre' comes before 'post'
+district_wise_combined_long_sn$test_type <- factor(district_wise_combined_long_sn$test_type, 
+                                                   levels = c("mean_pre_test", "mean_post_test"),
+                                                   labels = c("pre", "post"))
+
+# Create a new column for color mapping based on test type and overall average
+district_wise_combined_long_sn <- district_wise_combined_long_sn |>
+  mutate(color_group = case_when(
+    district_name == "Overall Average" & test_type == "pre"  ~ "Overall Average Pre",
+    district_name == "Overall Average" & test_type == "post" ~ "Overall Average Post",
+    test_type == "pre"  ~ "Pre",
+    test_type == "post" ~ "Post",
+    TRUE ~ "Other"
+  ))
+
+# Reorder district names based on "Post" mean percentage in descending order
+district_wise_combined_long_sn <- district_wise_combined_long_sn %>%
+  dplyr::mutate(post_percentage = ifelse(color_group == "Post", mean_percentage, NA)) %>%
+  dplyr::group_by(district_name) %>%
+  dplyr::mutate(post_percentage_max = max(post_percentage, na.rm = TRUE)) %>%
+  dplyr::arrange(dplyr::desc(post_percentage_max)) %>%
+  dplyr::mutate(district_name = factor(district_name, levels = unique(district_name))) %>%
+  dplyr::select(-post_percentage, -post_percentage_max)
+
+# Set factor levels to ensure 'Pre' comes before 'Post' for each district
+district_wise_combined_long_sn$color_group <- factor(district_wise_combined_long_sn$color_group, 
+                                                     levels = c("Pre", "Post", "Overall Average Pre", "Overall Average Post"))
+
+# Create the ggplot bar chart
+districtwise_combined_percentage_plot_sn <- ggplot(district_wise_combined_long_sn, aes(x = district_name, y = mean_percentage, fill = color_group)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.7) +
+  geom_text(aes(label = round(mean_percentage, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5,
+            size = 3) +
+  labs(x = "District Name",
+       y = "Mean Percentage Score",
+       fill = "Test Type") +
+  scale_fill_manual(values = c("Pre" = "coral", "Post" = "cyan3", 
+                               "Overall Average Pre" = "purple", "Overall Average Post" = "blue")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/districtwise_combined_percentage_plot_sn_mh.png", 
+       plot = districtwise_combined_percentage_plot_sn, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+#### Question wise analysis
+# QANC
+df_qanc_sn <- subset(df_sn, condition == "qanc")
+total_n_sn <- nrow(df_qanc_sn)
+
+st3_qanc_sn <- data.frame(
+  question = paste("Q", 1:10),
+  qanc_pre = c(
+    (sum(df_qanc_sn$q1_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q2_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q3_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q4_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q5_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q6_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q7_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q8_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q9_pre)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q10_pre) / total_n_sn) * 100
+  ),
+  qanc_post = c(
+    (sum(df_qanc_sn$q1_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q2_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q3_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q4_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q5_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q6_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q7_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q8_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q9_post)  / total_n_sn) * 100,
+    (sum(df_qanc_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+# Anaemia
+df_ane_sn <- subset(df_sn, condition == "ane")
+total_n_sn <- nrow(df_ane_sn)
+
+st3_ane_sn <- data.frame(
+  question = paste("Q", 1:10),
+  ane_pre = c(
+    (sum(df_ane_sn$q1_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q2_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q3_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q4_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q5_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q6_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q7_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q8_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q9_pre)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q10_pre) / total_n_sn) * 100
+  ),
+  ane_post = c(
+    (sum(df_ane_sn$q1_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q2_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q3_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q4_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q5_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q6_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q7_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q8_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q9_post)  / total_n_sn) * 100,
+    (sum(df_ane_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+# Hypertension
+df_htn_sn <- subset(df_sn, condition == "htn")
+total_n_sn <- nrow(df_htn_sn)
+
+st3_htn_sn <- data.frame(
+  question = paste("Q", 1:10),
+  htn_pre = c(
+    (sum(df_htn_sn$q1_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q2_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q3_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q4_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q5_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q6_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q7_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q8_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q9_pre)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q10_pre) / total_n_sn) * 100
+  ),
+  htn_post = c(
+    (sum(df_htn_sn$q1_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q2_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q3_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q4_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q5_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q6_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q7_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q8_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q9_post)  / total_n_sn) * 100,
+    (sum(df_htn_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+## Preterm labor and PPROM
+df_pprom_sn <- subset(df_sn, condition == "pprom")
+total_n_sn <- nrow(df_pprom_sn)
+
+st3_pprom_sn <- data.frame(
+  question = paste("Q", 1:10),
+  pprom_pre = c(
+    (sum(df_pprom_sn$q1_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q2_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q3_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q4_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q5_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q6_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q7_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q8_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q9_pre)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q10_pre) / total_n_sn) * 100
+  ),
+  pprom_post = c(
+    (sum(df_pprom_sn$q1_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q2_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q3_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q4_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q5_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q6_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q7_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q8_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q9_post)  / total_n_sn) * 100,
+    (sum(df_pprom_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+## Teenage Pregnancy
+df_teen_sn <- subset(df_sn, condition == "teen")
+total_n_sn <- nrow(df_teen_sn)
+
+st3_teen_sn <- data.frame(
+  question = paste("Q", 1:10),
+  teen_pre = c(
+    (sum(df_teen_sn$q1_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q2_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q3_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q4_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q5_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q6_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q7_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q8_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q9_pre)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q10_pre) / total_n_sn) * 100
+  ),
+  teen_post = c(
+    (sum(df_teen_sn$q1_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q2_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q3_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q4_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q5_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q6_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q7_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q8_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q9_post)  / total_n_sn) * 100,
+    (sum(df_teen_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+##Sickle Cell Disease (SCD)
+df_scd_sn <- subset(df_sn, condition == "scd")
+total_n_sn <- nrow(df_scd_sn)
+
+st3_scd_sn <- data.frame(
+  question = paste("Q", 1:10),
+  scd_pre = c(
+    (sum(df_scd_sn$q1_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q2_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q3_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q4_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q5_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q6_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q7_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q8_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q9_pre) / total_n_sn) * 100,
+    (sum(df_scd_sn$q10_pre) / total_n_sn) * 100
+  ),
+  scd_post = c(
+    (sum(df_scd_sn$q1_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q2_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q3_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q4_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q5_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q6_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q7_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q8_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q9_post) / total_n_sn) * 100,
+    (sum(df_scd_sn$q10_post) / total_n_sn) * 100
+  )
+)
+
+# Combine the data frames using cbind
+df_questions_combined_sn <- cbind(
+  st3_qanc_sn[, c("question", "qanc_pre", "qanc_post")],
+  st3_ane_sn[, c("ane_pre", "ane_post")],
+  st3_htn_sn[, c("htn_pre", "htn_post")],
+  st3_pprom_sn[, c("pprom_pre", "pprom_post")],
+  st3_teen_sn[, c("teen_pre", "teen_post")],
+  st3_scd_sn[, c("scd_pre", "scd_post")]
+)
+
+# Round all percentage columns to 1 decimal place
+df_questions_combined_sn[, 2:ncol(df_questions_combined_sn)] <- 
+  round(df_questions_combined_sn[, 2:ncol(df_questions_combined_sn)], 1)
+
+# Save as CSV
+write.csv(df_questions_combined_sn, "tables/df_questions_combined_sn_mh.csv", row.names = FALSE)
+
+# Create a gt table and apply some custom formatting
+df_questions_combined_sn_gt <- df_questions_combined_sn %>%
+  gt() %>%
+  cols_label(
+    question = "Question",
+    qanc_pre = "QANC Pre",
+    qanc_post = "QANC Post",
+    ane_pre = "ANE Pre",
+    ane_post = "ANE Post",
+    htn_pre = "HTN Pre",
+    htn_post = "HTN Post",
+    pprom_pre = "PPROM Pre",
+    pprom_post = "PPROM Post",
+    teen_pre = "TEEN Pre",
+    teen_post = "TEEN Post",
+    scd_pre = "SCD Pre",
+    scd_post = "SCD Post"
+  ) %>%
+  tab_spanner(
+    label = "Pre-Post Score Percentage",
+    columns = c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+                "htn_pre", "htn_post","pprom_pre", "pprom_post",
+                "teen_pre", "teen_post", "scd_pre", "scd_post")
+  )
+
+# Apply tab_style() to highlight cells with values < 50
+for (col in c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+              "htn_pre", "htn_post", "pprom_pre", "pprom_post",
+              "teen_pre", "teen_post", "scd_pre", "scd_post")) {
+  df_questions_combined_sn_gt <- df_questions_combined_sn_gt %>%
+    tab_style(
+      style = list(
+        cell_fill(color = "yellow"),
+        cell_text(weight = "bold")
+      ),
+      locations = cells_body(
+        columns = col, 
+        rows = df_questions_combined_sn[[col]] < 50
+      )
+    )
+}
+
+# Save the raw data frame, not the gt table
+write.csv(df_questions_combined_sn, "tables/df_questions_combined_sn_mh_gt.csv", row.names = FALSE)
+
+```
+
+
+```{r setup2}
+#| echo: false
+#| warning: false
+#| message: false
+
+##New ANM Questions--
+# Define the file paths
+filepaths <- c(
+  here::here('data','mh_cleaned_data','cho_cleaned_qanc_mh.csv'),
+  here::here('data','mh_cleaned_data','cho_cleaned_htn_mh.csv'),
+  here::here('data','mh_cleaned_data','cho_cleaned_ane_mh.csv'),
+  here::here('data','mh_cleaned_data','cho_cleaned_pprom_mh.csv'),
+  here::here('data','mh_cleaned_data','cho_cleaned_teen_mh.csv'),
+  here::here('data','mh_cleaned_data','cho_cleaned_scd_mh.csv')
+)
+
+# Import all files as data frames
+data_frames <- lapply(filepaths, read.csv)
+
+# Bind all data frames into a single data frame
+df_cho <- do.call(rbind, data_frames)
+
+# Cleaning the data
+df_cho <-
+  df_cho |>
+  janitor::clean_names()
+
+# Remove unwanted columns
+df_cho <- df_cho |> 
+  select(-c("number",
+            "name_post", 
+            "age_post", 
+            "entry_post", 
+            "districts_post", 
+            "experience_post", 
+            "mobile_no_post",
+            "date_post"))
+
+# Districts with district names
+df_cho$age_pre <- df_cho$age_pre |> as.character()
+
+# Ensure `age_pre` is numeric
+df_cho$age_pre <- as.numeric(df_cho$age_pre)
+
+# Current year
+current_year <- as.numeric(format(Sys.Date(), "%Y"))
+
+# Identify values in `age_pre` that are in the year format and convert them to age
+df_cho$age_pre <- ifelse(df_cho$age_pre >= 1900 & df_cho$age_pre <= current_year,
+                         current_year - df_cho$age_pre,
+                         df_cho$age_pre)
+
+# Change the district names and mutate a column with the concerned district names
+df_cho <- df_cho %>%
+  mutate(district_name = case_when(
+    districts_pre == 1 ~ "Nandurbar",
+    TRUE ~ NA_character_
+  ))
+
+# QANC Correct answers
+# Pre
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "qanc", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "qanc", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "qanc", ifelse(q3_pre  == 1, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "qanc", ifelse(q4_pre  == 4, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "qanc", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "qanc", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "qanc", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "qanc", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "qanc", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "qanc", ifelse(q10_pre == 1, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "qanc", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "qanc", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "qanc", ifelse(q3_post  == 1, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "qanc", ifelse(q4_post  == 4, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "qanc", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "qanc", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "qanc", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "qanc", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "qanc", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "qanc", ifelse(q10_post == 1, 1, 0), q10_post)
+  )
+
+# Anaemia correct answers
+# Pre
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "ane", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "ane", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "ane", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "ane", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "ane", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "ane", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "ane", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "ane", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "ane", ifelse(q9_pre  == 5, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "ane", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "ane", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "ane", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "ane", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "ane", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "ane", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "ane", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "ane", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "ane", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "ane", ifelse(q9_post  == 5, 1, 0), q9_post),
+    q10_post = ifelse(condition == "ane", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# HTN correct answers
+# Pre
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "htn", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "htn", ifelse(q2_pre  == 4, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "htn", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "htn", ifelse(q4_pre  == 3, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "htn", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "htn", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "htn", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "htn", ifelse(q8_pre  == 3, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "htn", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "htn", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "htn", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "htn", ifelse(q2_post  == 4, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "htn", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "htn", ifelse(q4_post  == 3, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "htn", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "htn", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "htn", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "htn", ifelse(q8_post  == 3, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "htn", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "htn", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# PPROM Correct answers 
+# Pre
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "pprom", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "pprom", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "pprom", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "pprom", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "pprom", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "pprom", ifelse(q6_pre  == 1, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "pprom", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "pprom", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "pprom", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "pprom", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "pprom", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "pprom", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "pprom", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "pprom", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "pprom", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "pprom", ifelse(q6_post  == 1, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "pprom", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "pprom", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "pprom", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "pprom", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# TEEN Correct answers 
+# Pre
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "teen", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "teen", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "teen", ifelse(q3_pre  == 2, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "teen", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "teen", ifelse(q5_pre  == 2, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "teen", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "teen", ifelse(q7_pre  == 1, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "teen", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "teen", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "teen", ifelse(q10_pre == 2, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "teen", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "teen", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "teen", ifelse(q3_post  == 2, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "teen", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "teen", ifelse(q5_post  == 2, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "teen", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "teen", ifelse(q7_post  == 1, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "teen", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "teen", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "teen", ifelse(q10_post == 2, 1, 0), q10_post)
+  )
+
+# SCD Correct answers 
+# Pre 
+df_cho <- df_cho %>%
+  mutate(
+    q1_pre  = ifelse(condition == "scd", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "scd", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "scd", ifelse(q3_pre  == 3, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "scd", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "scd", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "scd", ifelse(q6_pre  == 2, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "scd", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "scd", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "scd", ifelse(q9_pre  == 1, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "scd", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_cho <- df_cho %>%
+  mutate(
+    q1_post  = ifelse(condition == "scd", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "scd", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "scd", ifelse(q3_post  == 3, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "scd", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "scd", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "scd", ifelse(q6_post  == 2, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "scd", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "scd", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "scd", ifelse(q9_post  == 1, 1, 0), q9_post),
+    q10_post = ifelse(condition == "scd", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# Sum of Pre and post total correct scores
+df_cho <- df_cho %>%
+  mutate(
+    pre_total_correct  = rowSums(select(., starts_with("q") & ends_with("pre"))),
+    post_total_correct = rowSums(select(., starts_with("q") & ends_with("post")))
+  )
+
+df_cho <- df_cho |> 
+  mutate(relative_change = post_total_correct - pre_total_correct)
+
+# Adding relative change column and creating code for the same
+df_cho <- df_cho %>%
+  mutate(rc_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "-1 to -2",
+    relative_change %in% c(1, 2) ~ "1 to 2",
+    relative_change >= 3 ~ "+3 and above",
+    relative_change <= -3 ~ "-3 and below",
+    TRUE ~ NA_character_
+  ))
+
+df_cho <- df_cho %>%
+  mutate(rc_positive_negative_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "Negative change",
+    relative_change %in% c(1, 2) ~ "Positive change",
+    relative_change >= 3 ~ "Positive change",
+    relative_change <= -3 ~ "Negative change",
+    TRUE ~ NA_character_
+  ))
+
+# Create summary statistics grouped by district_name and condition
+sta1_cho <- df_cho %>%
+  group_by(district_name, condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    p_value = ifelse(
+      sum(!is.na(pre_total_correct)) > 1 & sum(!is.na(post_total_correct)) > 1, 
+      round(t.test(pre_total_correct, post_total_correct)$p.value, 6), 
+      NA )
+  )
+
+# Calculate state average (overall mean, std, and percentage grouped by condition)
+state_avg_cho <- df_cho %>%
+  group_by(condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(district_name = "Overall Average")
+
+# Combine district-level and state-level data
+sta1_cho <- bind_rows(sta1_cho, state_avg_cho)
+
+# Save sta1 as a CSV file
+write.csv(sta1_cho, "tables/sta1_summary_cho_mh.csv", row.names = FALSE)
+
+# Overall mean, std, and percentage grouped by condition
+sta2_cho <- df_cho %>%
+  group_by(condition) %>%
+  summarise(
+    n           = n(),
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  )
+
+# Calculate state average (same as above)
+state_avg_cho <- df_cho %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(condition = "Overall Average")
+
+# Combine condition-level and state-level data
+sta2_cho <- bind_rows(sta2_cho, state_avg_cho)
+
+# Save sta2 as a CSV file
+write.csv(sta2_cho, "tables/sta2_summary_cho_mh.csv", row.names = FALSE)
+
+# Reorder condition factor based on post-test mean percentage in descending order
+sta2_cho <- sta2_cho %>%
+  arrange(desc(post_mean_pct)) %>%
+  mutate(condition = factor(condition, levels = condition))
+
+# Reshape the data from wide to long format
+sta2_long_cho <- tidyr::pivot_longer(sta2_cho, 
+                                     cols = c("pre_mean_pct", "post_mean_pct"), 
+                                     names_to = "Time", 
+                                     values_to = "Mean_Pct")
+
+# Calculate the gain in knowledge for each condition
+knowledge_gain_cho <- sta2_cho %>%
+  mutate(Gain = post_mean_pct - pre_mean_pct) %>%
+  select(condition, Gain)
+
+# Reorder 'Time' factor levels to ensure 'pre' comes before 'post'
+sta2_long_cho$Time <- factor(sta2_long_cho$Time, levels = c("pre_mean_pct", "post_mean_pct"))
+
+# Combine data for all conditions
+relative_change_combined_cho <- df_cho %>%
+  count(condition, rc_positive_negative_code) %>%
+  group_by(condition) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Reorder 'condition' based on descending percentage of "Positive change"
+positive_order_cho <- relative_change_combined_cho %>%
+  filter(rc_positive_negative_code == "Positive change") %>%
+  arrange(percentage) %>%
+  pull(condition)
+
+relative_change_combined_cho <- relative_change_combined_cho %>%
+  mutate(condition = factor(condition, levels = positive_order_cho))
+
+# Replace condition abbreviations with full names
+sta2_cho <- sta2_cho %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Mean pre post percentage
+# Create a new column to differentiate the state average from other conditions
+sta2_long_cho <- sta2_long_cho %>%
+  mutate(state_avg = ifelse(condition == "Overall Average", "Overall Average", "Conditions"))
+
+# Create the ggplot bar chart with adjustments for spacing and legibility
+pre_post_mean_pct_cho <- ggplot(sta2_long_cho, aes(x = condition, y = Mean_Pct, fill = interaction(Time, state_avg))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_manual(values = c("pre_mean_pct.Conditions" = "blue", 
+                               "post_mean_pct.Conditions" = "orange",
+                               "pre_mean_pct.Overall Average" = "lightskyblue", 
+                               "post_mean_pct.Overall Average" = "lightgreen")) +
+  geom_text(aes(label = round(Mean_Pct, 1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.5) +
+  labs(x = "Condition", y = "Mean %") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    plot.margin = margin(10, 20, 10, 20),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) +
+  annotate("text", 
+           x = knowledge_gain_cho$condition, 
+           y = -5,
+           label = paste0(round(knowledge_gain_cho$Gain, 1), "%"),
+           size = 3.5, 
+           color = "red")
+
+# Save the plot
+ggsave("plots/pre_post_mean_pct_cho_mh.png", 
+       plot = pre_post_mean_pct_cho, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+## Relative Change
+plot_relative_change_cho <- ggplot(relative_change_combined_cho, aes(x = percentage, y = condition, fill = rc_positive_negative_code)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            hjust = -0.2, 
+            size = 3) +
+  labs(x = "Percentage (%)", y = "Condition") +
+  scale_fill_manual(values = c("Positive change" = "darkgreen", 
+                               "Negative change" = "red", 
+                               "No Change" = "orange")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10)
+  )
+
+# Save the plot
+ggsave("plots/plot_relative_change_cho_mh.png", 
+       plot = plot_relative_change_cho, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+# Add condition names
+relative_change_combined_cho <- relative_change_combined_cho %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Filter for 'Positive change'
+positive_changes_cho <- relative_change_combined_cho %>% 
+  filter(rc_positive_negative_code == "Positive change")
+
+# Highest positive
+max_index_cho <- which.max(positive_changes_cho$percentage)
+highest_positive_change_cho <- positive_changes_cho[max_index_cho, ]
+condition_name1_cho <- highest_positive_change_cho$condition_name
+
+# Filter for 'Negative change'
+negative_changes_cho <- relative_change_combined_cho %>% 
+  filter(rc_positive_negative_code == "Negative change")
+
+# Highest negative
+max_index_cho <- which.max(negative_changes_cho$percentage)
+highest_negative_change_cho <- negative_changes_cho[max_index_cho, ]
+condition_name_neg_cho <- highest_negative_change_cho$condition_name
+
+# District wise mean percentage
+district_wise_combined_cho <- df_cho |>
+  group_by(district_name) |>
+  summarise(
+    mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+    mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE)
+  )
+
+# Overall Average
+overall_avg_cho <- df_cho |>
+  summarise(
+    mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+    mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE)
+  ) |>
+  mutate(district_name = "Overall Average")
+
+district_wise_combined_cho <- bind_rows(district_wise_combined_cho, overall_avg_cho)
+
+# Sort
+district_wise_combined_cho <- district_wise_combined_cho |>
+  arrange(desc(mean_post_test)) |>
+  mutate(district_name = factor(district_name, levels = district_name))
+
+# Long format
+district_wise_combined_long_cho <- district_wise_combined_cho |>
+  pivot_longer(cols = starts_with("mean_"), names_to = "test_type", values_to = "mean_percentage")
+
+district_wise_combined_long_cho$test_type <- factor(district_wise_combined_long_cho$test_type, 
+                                                    levels = c("mean_pre_test", "mean_post_test"),
+                                                    labels = c("pre", "post"))
+
+district_wise_combined_long_cho <- district_wise_combined_long_cho |>
+  mutate(color_group = case_when(
+    district_name == "Overall Average" & test_type == "pre"  ~ "Overall Average Pre",
+    district_name == "Overall Average" & test_type == "post" ~ "Overall Average Post",
+    test_type == "pre"  ~ "Pre",
+    test_type == "post" ~ "Post",
+    TRUE ~ "Other"
+  ))
+
+district_wise_combined_long_cho <- district_wise_combined_long_cho %>%
+  mutate(post_percentage = ifelse(color_group == "Post", mean_percentage, NA)) %>%
+  group_by(district_name) %>%
+  mutate(post_percentage_max = max(post_percentage, na.rm = TRUE)) %>%
+  arrange(desc(post_percentage_max)) %>%
+  mutate(district_name = factor(district_name, levels = unique(district_name))) %>%
+  select(-post_percentage, -post_percentage_max)
+
+district_wise_combined_long_cho$color_group <- factor(district_wise_combined_long_cho$color_group, 
+                                                      levels = c("Pre", "Post", "Overall Average Pre", "Overall Average Post"))
+
+districtwise_combined_percentage_plot_cho <- ggplot(district_wise_combined_long_cho, aes(x = district_name, y = mean_percentage, fill = color_group)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.7) +
+  geom_text(aes(label = round(mean_percentage, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5,
+            size = 3) +
+  labs(x = "District Name",
+       y = "Mean Percentage Score",
+       fill = "Test Type") +
+  scale_fill_manual(values = c("Pre" = "coral", "Post" = "cyan3", 
+                               "Overall Average Pre" = "purple", "Overall Average Post" = "blue")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9)
+  )
+
+# Save the plot
+ggsave("plots/districtwise_combined_percentage_plot_cho_mh.png", 
+       plot = districtwise_combined_percentage_plot_cho, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+#### Question wise analysis
+# QANC
+df_qanc_cho <- subset(df_cho, condition == "qanc")
+total_n_cho <- nrow(df_qanc_cho)
+
+st3_qanc_cho <- data.frame(
+  question = paste("Q", 1:10),
+  qanc_pre = c(
+    (sum(df_qanc_cho$q1_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q2_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q3_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q4_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q5_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q6_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q7_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q8_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q9_pre)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q10_pre) / total_n_cho) * 100
+  ),
+  qanc_post = c(
+    (sum(df_qanc_cho$q1_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q2_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q3_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q4_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q5_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q6_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q7_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q8_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q9_post)  / total_n_cho) * 100,
+    (sum(df_qanc_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+# Anaemia
+df_ane_cho <- subset(df_cho, condition == "ane")
+total_n_cho <- nrow(df_ane_cho)
+
+st3_ane_cho <- data.frame(
+  question = paste("Q", 1:10),
+  ane_pre = c(
+    (sum(df_ane_cho$q1_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q2_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q3_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q4_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q5_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q6_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q7_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q8_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q9_pre)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q10_pre) / total_n_cho) * 100
+  ),
+  ane_post = c(
+    (sum(df_ane_cho$q1_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q2_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q3_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q4_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q5_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q6_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q7_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q8_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q9_post)  / total_n_cho) * 100,
+    (sum(df_ane_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+# Hypertension
+df_htn_cho <- subset(df_cho, condition == "htn")
+total_n_cho <- nrow(df_htn_cho)
+
+st3_htn_cho <- data.frame(
+  question = paste("Q", 1:10),
+  htn_pre = c(
+    (sum(df_htn_cho$q1_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q2_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q3_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q4_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q5_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q6_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q7_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q8_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q9_pre)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q10_pre) / total_n_cho) * 100
+  ),
+  htn_post = c(
+    (sum(df_htn_cho$q1_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q2_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q3_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q4_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q5_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q6_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q7_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q8_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q9_post)  / total_n_cho) * 100,
+    (sum(df_htn_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+## Preterm labor and PPROM
+df_pprom_cho <- subset(df_cho, condition == "pprom")
+total_n_cho <- nrow(df_pprom_cho)
+
+st3_pprom_cho <- data.frame(
+  question = paste("Q", 1:10),
+  pprom_pre = c(
+    (sum(df_pprom_cho$q1_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q2_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q3_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q4_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q5_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q6_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q7_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q8_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q9_pre)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q10_pre) / total_n_cho) * 100
+  ),
+  pprom_post = c(
+    (sum(df_pprom_cho$q1_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q2_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q3_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q4_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q5_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q6_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q7_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q8_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q9_post)  / total_n_cho) * 100,
+    (sum(df_pprom_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+## Teenage Pregnancy
+df_teen_cho <- subset(df_cho, condition == "teen")
+total_n_cho <- nrow(df_teen_cho)
+
+st3_teen_cho <- data.frame(
+  question = paste("Q", 1:10),
+  teen_pre = c(
+    (sum(df_teen_cho$q1_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q2_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q3_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q4_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q5_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q6_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q7_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q8_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q9_pre)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q10_pre) / total_n_cho) * 100
+  ),
+  teen_post = c(
+    (sum(df_teen_cho$q1_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q2_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q3_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q4_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q5_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q6_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q7_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q8_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q9_post)  / total_n_cho) * 100,
+    (sum(df_teen_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+## Sickle Cell Disease (SCD)
+df_scd_cho <- subset(df_cho, condition == "scd")
+total_n_cho <- nrow(df_scd_cho)
+
+st3_scd_cho <- data.frame(
+  question = paste("Q", 1:10),
+  scd_pre = c(
+    (sum(df_scd_cho$q1_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q2_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q3_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q4_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q5_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q6_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q7_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q8_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q9_pre) / total_n_cho) * 100,
+    (sum(df_scd_cho$q10_pre) / total_n_cho) * 100
+  ),
+  scd_post = c(
+    (sum(df_scd_cho$q1_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q2_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q3_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q4_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q5_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q6_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q7_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q8_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q9_post) / total_n_cho) * 100,
+    (sum(df_scd_cho$q10_post) / total_n_cho) * 100
+  )
+)
+
+# Combine the data frames using cbind
+df_questions_combined_cho <- cbind(
+  st3_qanc_cho[, c("question", "qanc_pre", "qanc_post")],
+  st3_ane_cho[, c("ane_pre", "ane_post")],
+  st3_htn_cho[, c("htn_pre", "htn_post")],
+  st3_pprom_cho[, c("pprom_pre", "pprom_post")],
+  st3_teen_cho[, c("teen_pre", "teen_post")],
+  st3_scd_cho[, c("scd_pre", "scd_post")]
+)
+
+# Round all percentage columns to 1 decimal place
+df_questions_combined_cho[, 2:ncol(df_questions_combined_cho)] <- 
+  round(df_questions_combined_cho[, 2:ncol(df_questions_combined_cho)], 1)
+
+# Save as CSV
+write.csv(df_questions_combined_cho, "tables/df_questions_combined_cho_mh.csv", row.names = FALSE)
+
+# Create a gt table
+df_questions_combined_cho_gt <- df_questions_combined_cho %>%
+  gt() %>%
+  cols_label(
+    question = "Question",
+    qanc_pre = "QANC Pre",
+    qanc_post = "QANC Post",
+    ane_pre = "ANE Pre",
+    ane_post = "ANE Post",
+    htn_pre = "HTN Pre",
+    htn_post = "HTN Post",
+    pprom_pre = "PPROM Pre",
+    pprom_post = "PPROM Post",
+    teen_pre = "TEEN Pre",
+    teen_post = "TEEN Post",
+    scd_pre = "SCD Pre",
+    scd_post = "SCD Post"
+  ) %>%
+  tab_spanner(
+    label = "Pre-Post Score Percentage",
+    columns = c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+                "htn_pre", "htn_post","pprom_pre", "pprom_post",
+                "teen_pre", "teen_post", "scd_pre", "scd_post")
+  )
+
+# Highlight cells < 50
+for (col in c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+              "htn_pre", "htn_post", "pprom_pre", "pprom_post",
+              "teen_pre", "teen_post", "scd_pre", "scd_post")) {
+  df_questions_combined_cho_gt <- df_questions_combined_cho_gt %>%
+    tab_style(
+      style = list(
+        cell_fill(color = "yellow"),
+        cell_text(weight = "bold")
+      ),
+      locations = cells_body(
+        columns = col, 
+        rows = df_questions_combined_cho[[col]] < 50
+      )
+    )
+}
+
+# Save the raw data frame
+write.csv(df_questions_combined_cho, "tables/df_questions_combined_cho_mh_gt.csv", row.names = FALSE)
+
+```
+
+```{r setup3}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Define the file paths
+filepaths <- c(
+  here::here('data','mh_cleaned_data','anm_cleaned_qanc_mh.csv'),
+  here::here('data','mh_cleaned_data','anm_cleaned_htn_mh.csv'),
+  here::here('data','mh_cleaned_data','anm_cleaned_ane_mh.csv'),
+  here::here('data','mh_cleaned_data','anm_cleaned_pprom_mh.csv'),
+  here::here('data','mh_cleaned_data','anm_cleaned_teen_mh.csv'),
+  here::here('data','mh_cleaned_data','anm_cleaned_scd_mh.csv')
+)
+
+# Import all files as data frames
+data_frames <- lapply(filepaths, read.csv)
+
+# Bind all data frames into a single data frame
+df_anm <- do.call(rbind, data_frames)
+
+# Cleaning the data
+df_anm <-
+  df_anm |>
+  janitor::clean_names()
+
+# Remove unwanted columns
+df_anm <- df_anm |> 
+  select(-c("number",
+            "name_post", 
+            "age_post", 
+            "entry_post", 
+            "districts_post", 
+            "experience_post", 
+            "mobile_no_post",
+            "date_post"))
+
+# Districts with district names
+df_anm$age_pre <- df_anm$age_pre |> as.character()
+
+# Ensure `age_pre` is numeric
+df_anm$age_pre <- as.numeric(df_anm$age_pre)
+
+# Current year
+current_year <- as.numeric(format(Sys.Date(), "%Y"))
+
+# Identify values in `age_pre` that are in the year format and convert them to age
+df_anm$age_pre <- ifelse(df_anm$age_pre >= 1900 & df_anm$age_pre <= current_year,
+                         current_year - df_anm$age_pre,
+                         df_anm$age_pre)
+
+# Change the district names and mutate a column with the concerned district names
+df_anm <- df_anm %>%
+  mutate(district_name = case_when(
+    districts_pre == 1 ~ "Nandurbar",
+    TRUE ~ NA_character_
+  ))
+
+# QANC Correct answers
+# Pre
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "qanc", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "qanc", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "qanc", ifelse(q3_pre  == 1, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "qanc", ifelse(q4_pre  == 4, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "qanc", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "qanc", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "qanc", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "qanc", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "qanc", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "qanc", ifelse(q10_pre == 1, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "qanc", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "qanc", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "qanc", ifelse(q3_post  == 1, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "qanc", ifelse(q4_post  == 4, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "qanc", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "qanc", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "qanc", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "qanc", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "qanc", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "qanc", ifelse(q10_post == 1, 1, 0), q10_post)
+  )
+
+# Anaemia correct answers
+# Pre
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "ane", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "ane", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "ane", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "ane", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "ane", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "ane", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "ane", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "ane", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "ane", ifelse(q9_pre  == 5, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "ane", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "ane", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "ane", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "ane", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "ane", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "ane", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "ane", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "ane", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "ane", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "ane", ifelse(q9_post  == 5, 1, 0), q9_post),
+    q10_post = ifelse(condition == "ane", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# HTN correct answers
+# Pre
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "htn", ifelse(q1_pre  == 1, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "htn", ifelse(q2_pre  == 4, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "htn", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "htn", ifelse(q4_pre  == 3, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "htn", ifelse(q5_pre  == 1, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "htn", ifelse(q6_pre  == 4, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "htn", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "htn", ifelse(q8_pre  == 3, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "htn", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "htn", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "htn", ifelse(q1_post  == 1, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "htn", ifelse(q2_post  == 4, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "htn", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "htn", ifelse(q4_post  == 3, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "htn", ifelse(q5_post  == 1, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "htn", ifelse(q6_post  == 4, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "htn", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "htn", ifelse(q8_post  == 3, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "htn", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "htn", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# PPROM Correct answers 
+# Pre
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "pprom", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "pprom", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "pprom", ifelse(q3_pre  == 4, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "pprom", ifelse(q4_pre  == 1, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "pprom", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "pprom", ifelse(q6_pre  == 1, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "pprom", ifelse(q7_pre  == 3, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "pprom", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "pprom", ifelse(q9_pre  == 4, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "pprom", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "pprom", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "pprom", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "pprom", ifelse(q3_post  == 4, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "pprom", ifelse(q4_post  == 1, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "pprom", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "pprom", ifelse(q6_post  == 1, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "pprom", ifelse(q7_post  == 3, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "pprom", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "pprom", ifelse(q9_post  == 4, 1, 0), q9_post),
+    q10_post = ifelse(condition == "pprom", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+
+# TEEN Correct answers 
+# Pre
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "teen", ifelse(q1_pre  == 4, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "teen", ifelse(q2_pre  == 1, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "teen", ifelse(q3_pre  == 2, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "teen", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "teen", ifelse(q5_pre  == 2, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "teen", ifelse(q6_pre  == 3, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "teen", ifelse(q7_pre  == 1, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "teen", ifelse(q8_pre  == 1, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "teen", ifelse(q9_pre  == 2, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "teen", ifelse(q10_pre == 2, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "teen", ifelse(q1_post  == 4, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "teen", ifelse(q2_post  == 1, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "teen", ifelse(q3_post  == 2, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "teen", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "teen", ifelse(q5_post  == 2, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "teen", ifelse(q6_post  == 3, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "teen", ifelse(q7_post  == 1, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "teen", ifelse(q8_post  == 1, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "teen", ifelse(q9_post  == 2, 1, 0), q9_post),
+    q10_post = ifelse(condition == "teen", ifelse(q10_post == 2, 1, 0), q10_post)
+  )
+
+# SCD Correct answers 
+# Pre 
+df_anm <- df_anm %>%
+  mutate(
+    q1_pre  = ifelse(condition == "scd", ifelse(q1_pre  == 3, 1, 0), q1_pre),
+    q2_pre  = ifelse(condition == "scd", ifelse(q2_pre  == 3, 1, 0), q2_pre),
+    q3_pre  = ifelse(condition == "scd", ifelse(q3_pre  == 3, 1, 0), q3_pre),
+    q4_pre  = ifelse(condition == "scd", ifelse(q4_pre  == 2, 1, 0), q4_pre),
+    q5_pre  = ifelse(condition == "scd", ifelse(q5_pre  == 4, 1, 0), q5_pre),
+    q6_pre  = ifelse(condition == "scd", ifelse(q6_pre  == 2, 1, 0), q6_pre),
+    q7_pre  = ifelse(condition == "scd", ifelse(q7_pre  == 2, 1, 0), q7_pre),
+    q8_pre  = ifelse(condition == "scd", ifelse(q8_pre  == 4, 1, 0), q8_pre),
+    q9_pre  = ifelse(condition == "scd", ifelse(q9_pre  == 1, 1, 0), q9_pre),
+    q10_pre = ifelse(condition == "scd", ifelse(q10_pre == 4, 1, 0), q10_pre)
+  )
+
+# Post
+df_anm <- df_anm %>%
+  mutate(
+    q1_post  = ifelse(condition == "scd", ifelse(q1_post  == 3, 1, 0), q1_post),
+    q2_post  = ifelse(condition == "scd", ifelse(q2_post  == 3, 1, 0), q2_post),
+    q3_post  = ifelse(condition == "scd", ifelse(q3_post  == 3, 1, 0), q3_post),
+    q4_post  = ifelse(condition == "scd", ifelse(q4_post  == 2, 1, 0), q4_post),
+    q5_post  = ifelse(condition == "scd", ifelse(q5_post  == 4, 1, 0), q5_post),
+    q6_post  = ifelse(condition == "scd", ifelse(q6_post  == 2, 1, 0), q6_post),
+    q7_post  = ifelse(condition == "scd", ifelse(q7_post  == 2, 1, 0), q7_post),
+    q8_post  = ifelse(condition == "scd", ifelse(q8_post  == 4, 1, 0), q8_post),
+    q9_post  = ifelse(condition == "scd", ifelse(q9_post  == 1, 1, 0), q9_post),
+    q10_post = ifelse(condition == "scd", ifelse(q10_post == 4, 1, 0), q10_post)
+  )
+# Sum of Pre and post total correct scores
+df_anm <- df_anm %>%
+  mutate(
+    pre_total_correct  = rowSums(select(., starts_with("q") & ends_with("pre"))),
+    post_total_correct = rowSums(select(., starts_with("q") & ends_with("post")))
+  )
+
+df_anm <- df_anm |> 
+  mutate(relative_change = post_total_correct - pre_total_correct)
+
+# Adding relative change column and creating code for the same
+df_anm <- df_anm %>%
+  mutate(rc_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "-1 to -2",
+    relative_change %in% c(1, 2) ~ "1 to 2",
+    relative_change >= 3 ~ "+3 and above",
+    relative_change <= -3 ~ "-3 and below",
+    TRUE ~ NA_character_
+  ))
+
+df_anm <- df_anm %>%
+  mutate(rc_positive_negative_code = case_when(
+    relative_change == 0 ~ "No Change",
+    relative_change %in% c(-1, -2) ~ "Negative change",
+    relative_change %in% c(1, 2) ~ "Positive change",
+    relative_change >= 3 ~ "Positive change",
+    relative_change <= -3 ~ "Negative change",
+    TRUE ~ NA_character_
+  ))
+
+# Create summary statistics grouped by district_name and condition
+sta1_anm <- df_anm %>%
+  group_by(district_name, condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    p_value = ifelse(
+      sum(!is.na(pre_total_correct)) > 1 & sum(!is.na(post_total_correct)) > 1, 
+      round(t.test(pre_total_correct, post_total_correct)$p.value, 6), 
+      NA )
+  )
+
+# Calculate state average (overall mean, std, and percentage grouped by condition)
+state_avg_anm <- df_anm %>%
+  group_by(condition) %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(district_name = "Overall Average")
+
+# Combine district-level and state-level data
+sta1_anm <- bind_rows(sta1_anm, state_avg_anm)
+
+# Save sta1 as a CSV file
+write.csv(sta1_anm, "tables/sta1_summary_anm_ap.csv", row.names = FALSE)
+
+# Overall mean, std, and percentage grouped by condition
+sta2_anm <- df_anm %>%
+  group_by(condition) %>%
+  summarise(
+    n           = n(),
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  )
+
+# Calculate state average (same as above)
+state_avg_anm <- df_anm %>%
+  summarise(
+    pre_mean     = round(mean(pre_total_correct, na.rm = TRUE), 1),
+    pre_std      = round(sd(pre_total_correct,   na.rm = TRUE), 1),
+    pre_mean_pct = round((mean(pre_total_correct, na.rm = TRUE) / 10) * 100, 1),
+    post_mean     = round(mean(post_total_correct, na.rm = TRUE), 1),
+    post_std      = round(sd(post_total_correct,   na.rm = TRUE), 1),
+    post_mean_pct = round((mean(post_total_correct, na.rm = TRUE) / 10) * 100, 1)
+  ) %>%
+  mutate(condition = "Overall Average")
+
+# Combine condition-level and state-level data
+sta2_anm <- bind_rows(sta2_anm, state_avg_anm)
+
+# Save sta2 as a CSV file
+write.csv(sta2_anm, "tables/sta2_summary_anm_ap.csv", row.names = FALSE)
+
+# Reorder condition factor based on post-test mean percentage in descending order
+sta2_anm <- sta2_anm %>%
+  arrange(desc(post_mean_pct)) %>%
+  mutate(condition = factor(condition, levels = condition))
+
+# Reshape the data from wide to long format
+sta2_long_anm <- tidyr::pivot_longer(sta2_anm, 
+                                     cols = c("pre_mean_pct", "post_mean_pct"), 
+                                     names_to = "Time", 
+                                     values_to = "Mean_Pct")
+
+# Calculate the gain in knowledge for each condition
+knowledge_gain_anm <- sta2_anm %>%
+  mutate(Gain = post_mean_pct - pre_mean_pct) %>%
+  select(condition, Gain)
+
+# Reorder 'Time' factor levels to ensure 'pre' comes before 'post'
+sta2_long_anm$Time <- factor(sta2_long_anm$Time, levels = c("pre_mean_pct", "post_mean_pct"))
+
+# Combine data for all conditions
+relative_change_combined_anm <- df_anm %>%
+  count(condition, rc_positive_negative_code) %>%
+  group_by(condition) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Reorder 'condition' based on descending percentage of "Positive change"
+positive_order_anm <- relative_change_combined_anm %>%
+  filter(rc_positive_negative_code == "Positive change") %>%
+  arrange(percentage) %>%
+  pull(condition)
+
+relative_change_combined_anm <- relative_change_combined_anm %>%
+  mutate(condition = factor(condition, levels = positive_order_anm))
+
+# Replace condition abbreviations with full names
+sta2_anm <- sta2_anm %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Mean pre post percentage
+# Create a new column to differentiate the state average from other conditions
+sta2_long_anm <- sta2_long_anm %>%
+  mutate(state_avg = ifelse(condition == "Overall Average", "Overall Average", "Conditions"))
+
+# Create the ggplot bar chart with adjustments for spacing and legibility
+pre_post_mean_pct_anm <- ggplot(sta2_long_anm, aes(x = condition, y = Mean_Pct, fill = interaction(Time, state_avg))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_manual(values = c("pre_mean_pct.Conditions" = "blue", 
+                               "post_mean_pct.Conditions" = "orange",
+                               "pre_mean_pct.Overall Average" = "lightskyblue", 
+                               "post_mean_pct.Overall Average" = "lightgreen")) +
+  geom_text(aes(label = round(Mean_Pct, 1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.5) +
+  labs(x = "Condition", y = "Mean %") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    plot.margin = margin(10, 20, 10, 20),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) +
+  annotate("text", 
+           x = knowledge_gain_anm$condition, 
+           y = -5,
+           label = paste0(round(knowledge_gain_anm$Gain, 1), "%"),
+           size = 3.5, 
+           color = "red")
+
+# Save the plot in the "plots" directory
+ggsave("plots/pre_post_mean_pct_anm_mh.png", 
+       plot = pre_post_mean_pct_anm, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+## Relative Change
+plot_relative_change_anm <- ggplot(relative_change_combined_anm, aes(x = percentage, y = condition, fill = rc_positive_negative_code)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            hjust = -0.2, 
+            size = 3) +
+  labs(x = "Percentage (%)", y = "Condition") +
+  scale_fill_manual(values = c("Positive change" = "darkgreen", 
+                               "Negative change" = "red", 
+                               "No Change" = "orange")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/plot_relative_change_anm_mh.png", 
+       plot = plot_relative_change_anm, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+# Add condition names
+relative_change_combined_anm <- relative_change_combined_anm %>%
+  mutate(condition_name = case_when(
+    condition == "ane"  ~ "Anaemia",
+    condition == "htn"  ~ "Hypertension",
+    condition == "qanc" ~ "Quality ANC",
+    condition == "pprom"~ "Preterm Labour and PPROM",
+    condition == "teen" ~ "Teenage Pregnancy",
+    condition == "scd"  ~ "Sickle Cell Disease",
+    TRUE ~ condition
+  ))
+
+# Filter for 'Positive change'
+positive_changes_anm <- relative_change_combined_anm %>% 
+  filter(rc_positive_negative_code == "Positive change")
+
+# Find the index of the maximum percentage
+max_index_anm <- which.max(positive_changes_anm$percentage)
+
+# Extract the row with the highest percentage
+highest_positive_change_anm <- positive_changes_anm[max_index_anm, ]
+
+# Extract the corresponding condition name
+condition_name1_anm <- highest_positive_change_anm$condition_name
+
+# Filter for 'Negative change'
+negative_changes_anm <- relative_change_combined_anm %>% 
+  filter(rc_positive_negative_code == "Negative change")
+
+# Find the index of the maximum percentage
+max_index_anm <- which.max(negative_changes_anm$percentage)
+
+# Extract the row with the highest percentage
+highest_negative_change_anm <- negative_changes_anm[max_index_anm, ]
+
+# Extract the corresponding condition name
+condition_name_neg_anm <- highest_negative_change_anm$condition_name
+
+# Calculate the district-wise mean percentage for pre and post test scores
+district_wise_combined_anm <- df_anm |>
+  group_by(district_name) |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE))
+
+# Calculate Overall Average and add it to the data
+overall_avg_anm <- df_anm |>
+  summarise(mean_pre_test = mean(pre_total_correct, na.rm = TRUE) * 100 / max(pre_total_correct, na.rm = TRUE), 
+            mean_post_test = mean(post_total_correct, na.rm = TRUE) * 100 / max(post_total_correct, na.rm = TRUE)) |>
+  mutate(district_name = "Overall Average")
+
+# Combine the overall average with the district-wise data
+district_wise_combined_anm <- bind_rows(district_wise_combined_anm, overall_avg_anm)
+
+# Reorder district_name factor by post-test mean percentage in descending order
+district_wise_combined_anm <- district_wise_combined_anm |>
+  arrange(desc(mean_post_test)) |>
+  mutate(district_name = factor(district_name, levels = district_name))
+
+# Reshape the data to long format
+district_wise_combined_long_anm <- district_wise_combined_anm |>
+  pivot_longer(cols = starts_with("mean_"), names_to = "test_type", values_to = "mean_percentage")
+
+# Reorder 'test_type' factor levels to ensure 'pre' comes before 'post'
+district_wise_combined_long_anm$test_type <- factor(district_wise_combined_long_anm$test_type, 
+                                                    levels = c("mean_pre_test", "mean_post_test"),
+                                                    labels = c("pre", "post"))
+
+# Create a new column for color mapping based on test type and overall average
+district_wise_combined_long_anm <- district_wise_combined_long_anm |>
+  mutate(color_group = case_when(
+    district_name == "Overall Average" & test_type == "pre"  ~ "Overall Average Pre",
+    district_name == "Overall Average" & test_type == "post" ~ "Overall Average Post",
+    test_type == "pre"  ~ "Pre",
+    test_type == "post" ~ "Post",
+    TRUE ~ "Other"
+  ))
+
+# Reorder district names based on "Post" mean percentage in descending order
+district_wise_combined_long_anm <- district_wise_combined_long_anm %>%
+  dplyr::mutate(post_percentage = ifelse(color_group == "Post", mean_percentage, NA)) %>%
+  dplyr::group_by(district_name) %>%
+  dplyr::mutate(post_percentage_max = max(post_percentage, na.rm = TRUE)) %>%
+  dplyr::arrange(dplyr::desc(post_percentage_max)) %>%
+  dplyr::mutate(district_name = factor(district_name, levels = unique(district_name))) %>%
+  dplyr::select(-post_percentage, -post_percentage_max)
+
+# Set factor levels to ensure 'Pre' comes before 'Post' for each district
+district_wise_combined_long_anm$color_group <- factor(district_wise_combined_long_anm$color_group, 
+                                                      levels = c("Pre", "Post", "Overall Average Pre", "Overall Average Post"))
+
+# Create the ggplot bar chart
+districtwise_combined_percentage_plot_anm <- ggplot(district_wise_combined_long_anm, aes(x = district_name, y = mean_percentage, fill = color_group)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.7) +
+  geom_text(aes(label = round(mean_percentage, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5,
+            size = 3) +
+  labs(x = "District Name",
+       y = "Mean Percentage Score",
+       fill = "Test Type") +
+  scale_fill_manual(values = c("Pre" = "coral", "Post" = "cyan3", 
+                               "Overall Average Pre" = "purple", "Overall Average Post" = "blue")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9)
+  )
+
+# Save the plot in the "plots" directory
+ggsave("plots/districtwise_combined_percentage_plot_anm_mh.png", 
+       plot = districtwise_combined_percentage_plot_anm, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+#### Question wise analysis
+# QANC
+df_qanc_anm <- subset(df_anm, condition == "qanc")
+total_n_anm <- nrow(df_qanc_anm)
+
+st3_qanc_anm <- data.frame(
+  question = paste("Q", 1:10),
+  qanc_pre = c(
+    (sum(df_qanc_anm$q1_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q2_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q3_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q4_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q5_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q6_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q7_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q8_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q9_pre)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q10_pre) / total_n_anm) * 100
+  ),
+  qanc_post = c(
+    (sum(df_qanc_anm$q1_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q2_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q3_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q4_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q5_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q6_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q7_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q8_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q9_post)  / total_n_anm) * 100,
+    (sum(df_qanc_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+# Anaemia
+df_ane_anm <- subset(df_anm, condition == "ane")
+total_n_anm <- nrow(df_ane_anm)
+
+st3_ane_anm <- data.frame(
+  question = paste("Q", 1:10),
+  ane_pre = c(
+    (sum(df_ane_anm$q1_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q2_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q3_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q4_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q5_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q6_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q7_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q8_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q9_pre)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q10_pre) / total_n_anm) * 100
+  ),
+  ane_post = c(
+    (sum(df_ane_anm$q1_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q2_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q3_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q4_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q5_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q6_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q7_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q8_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q9_post)  / total_n_anm) * 100,
+    (sum(df_ane_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+# Hypertension
+df_htn_anm <- subset(df_anm, condition == "htn")
+total_n_anm <- nrow(df_htn_anm)
+
+st3_htn_anm <- data.frame(
+  question = paste("Q", 1:10),
+  htn_pre = c(
+    (sum(df_htn_anm$q1_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q2_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q3_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q4_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q5_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q6_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q7_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q8_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q9_pre)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q10_pre) / total_n_anm) * 100
+  ),
+  htn_post = c(
+    (sum(df_htn_anm$q1_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q2_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q3_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q4_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q5_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q6_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q7_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q8_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q9_post)  / total_n_anm) * 100,
+    (sum(df_htn_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+## Preterm labor and PPROM
+df_pprom_anm <- subset(df_anm, condition == "pprom")
+total_n_anm <- nrow(df_pprom_anm)
+
+st3_pprom_anm <- data.frame(
+  question = paste("Q", 1:10),
+  pprom_pre = c(
+    (sum(df_pprom_anm$q1_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q2_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q3_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q4_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q5_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q6_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q7_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q8_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q9_pre)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q10_pre) / total_n_anm) * 100
+  ),
+  pprom_post = c(
+    (sum(df_pprom_anm$q1_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q2_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q3_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q4_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q5_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q6_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q7_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q8_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q9_post)  / total_n_anm) * 100,
+    (sum(df_pprom_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+## Teenage Pregnancy
+df_teen_anm <- subset(df_anm, condition == "teen")
+total_n_anm <- nrow(df_teen_anm)
+
+st3_teen_anm <- data.frame(
+  question = paste("Q", 1:10),
+  teen_pre = c(
+    (sum(df_teen_anm$q1_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q2_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q3_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q4_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q5_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q6_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q7_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q8_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q9_pre)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q10_pre) / total_n_anm) * 100
+  ),
+  teen_post = c(
+    (sum(df_teen_anm$q1_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q2_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q3_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q4_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q5_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q6_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q7_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q8_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q9_post)  / total_n_anm) * 100,
+    (sum(df_teen_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+##Sickle Cell Disease (SCD)
+df_scd_anm <- subset(df_anm, condition == "scd")
+total_n_anm <- nrow(df_scd_anm)
+
+st3_scd_anm <- data.frame(
+  question = paste("Q", 1:10),
+  scd_pre = c(
+    (sum(df_scd_anm$q1_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q2_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q3_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q4_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q5_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q6_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q7_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q8_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q9_pre) / total_n_anm) * 100,
+    (sum(df_scd_anm$q10_pre) / total_n_anm) * 100
+  ),
+  scd_post = c(
+    (sum(df_scd_anm$q1_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q2_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q3_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q4_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q5_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q6_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q7_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q8_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q9_post) / total_n_anm) * 100,
+    (sum(df_scd_anm$q10_post) / total_n_anm) * 100
+  )
+)
+
+# Combine the data frames
+df_questions_combined_anm <- cbind(
+  st3_qanc_anm[, c("question", "qanc_pre", "qanc_post")],
+  st3_ane_anm[, c("ane_pre", "ane_post")],
+  st3_htn_anm[, c("htn_pre", "htn_post")],
+  st3_pprom_anm[, c("pprom_pre", "pprom_post")],
+  st3_teen_anm[, c("teen_pre", "teen_post")],
+  st3_scd_anm[, c("scd_pre", "scd_post")]
+)
+
+# Round percentages
+df_questions_combined_anm[, 2:ncol(df_questions_combined_anm)] <- 
+  round(df_questions_combined_anm[, 2:ncol(df_questions_combined_anm)], 1)
+
+# Save CSV
+write.csv(df_questions_combined_anm, "tables/df_questions_combined_anm_mh.csv", row.names = FALSE)
+
+# Create gt table
+df_questions_combined_anm_gt <- df_questions_combined_anm %>%
+  gt() %>%
+  cols_label(
+    question = "Question",
+    qanc_pre = "QANC Pre",
+    qanc_post = "QANC Post",
+    ane_pre = "ANE Pre",
+    ane_post = "ANE Post",
+    htn_pre = "HTN Pre",
+    htn_post = "HTN Post",
+    pprom_pre = "PPROM Pre",
+    pprom_post = "PPROM Post",
+    teen_pre = "TEEN Pre",
+    teen_post = "TEEN Post",
+    scd_pre = "SCD Pre",
+    scd_post = "SCD Post"
+  ) %>%
+  tab_spanner(
+    label = "Pre-Post Score Percentage",
+    columns = c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+                "htn_pre", "htn_post","pprom_pre", "pprom_post",
+                "teen_pre", "teen_post", "scd_pre", "scd_post")
+  )
+
+# Highlight cells <50
+for (col in c("qanc_pre", "qanc_post", "ane_pre", "ane_post", 
+              "htn_pre", "htn_post", "pprom_pre", "pprom_post",
+              "teen_pre", "teen_post", "scd_pre", "scd_post")) {
+  df_questions_combined_anm_gt <- df_questions_combined_anm_gt %>%
+    tab_style(
+      style = list(
+        cell_fill(color = "yellow"),
+        cell_text(weight = "bold")
+      ),
+      locations = cells_body(
+        columns = col, 
+        rows = df_questions_combined_anm[[col]] < 50
+      )
+    )
+}
+
+# Save raw CSV
+write.csv(df_questions_combined_anm, "tables/df_questions_combined_anm_mh_gt.csv", row.names = FALSE)
+
+```
+
+# Phase 1 {.tabset}
+
+## Row {.flow.small}
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| title: "Topics"
+#| font-size-content: 5
+
+"Quality ANC"
+
+```
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| title: "Topics"
+#| font-size-content: 5
+
+"Anaemia"
+
+```
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| title: "Topics"
+#| font-size-content: 5
+
+"Hypertension"
+
+```
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| title: "Topics"
+#| font-size-content: 5
+
+"Preterm Labor and PPROM"
+
+```
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| font-size-content: 5
+#| title: "Topics"
+
+"Teenage Pregnancy"
+
+```
+
+```{r}
+#| content: valuebox
+#| color: primary
+#| font-size-content: 5
+#| title: "Topics"
+
+"Sickle Cell Disease"
+
+```
+
+
+```{r}
+#| content: valuebox
+#| title: "MO (Approx.)"
+#| color: success
+#| font-size-content: 5
+
+nrow(df_mo[df_mo$condition == 'qanc', ])
+```
+
+```{r}
+#| content: valuebox
+#| title: "SN (Approx.)"
+#| color: success
+#| font-size-content: 5
+
+nrow(df_sn[df_sn$condition == 'qanc', ])
+```
+
+```{r}
+#| content: valuebox
+#| title: "CHO (Approx.)"
+#| color: success
+#| font-size-content: 5
+
+nrow(df_cho[df_cho$condition == 'qanc', ])
+```
+
+```{r}
+#| content: valuebox
+#| title: "ANM (Approx.)"
+#| color: success
+#| font-size-content: 5
+
+nrow(df_anm[df_anm$condition == 'qanc', ])
+```
+
+## Row {.flow}
+### Column {.tabset}
+
+#### MO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Mean Pre - Post Percentage</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Red- % Knowledge gain</span>"
+
+# MO mean pre post
+pre_post_mean_pct_mo
+```
+
+#### SN
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Mean Pre - Post Percentage</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Red- % Knowledge gain</span>"
+
+# SN mean pre post
+pre_post_mean_pct_sn
+```
+
+#### CHO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Mean Pre - Post Percentage</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Red- % Knowledge gain</span>"
+
+# CHO mean pre post
+pre_post_mean_pct_cho
+```
+
+#### ANM
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Mean Pre - Post Percentage</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Red- % Knowledge gain</span>"
+
+# ANM mean pre post
+pre_post_mean_pct_anm
+```
+
+### Column {.tabset}
+
+#### MO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Relative Percentage Change</span>"
+#| fig-cap: "<span style='font-size:10px;'><span style='font-weight:bold;'>Relative percentage change:</span> Shows increase or decrease in post test scores compared to pre test scores.<br><span style='font-weight:bold;'>Positive change:</span> Participants scored higher in post test than in pretest.<br> <span style='font-weight:bold;'>Negative change:</span> Participants scored lower in post test than in pretest.</span>"
+
+# MO relative change
+plot_relative_change_mo
+```
+
+#### SN
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Relative Percentage Change</span>"
+#| fig-cap: "<span style='font-size:10px;'><span style='font-weight:bold;'>Relative percentage change:</span> Shows increase or decrease in post test scores compared to pre test scores.<br><span style='font-weight:bold;'>Positive change:</span> Participants scored higher in post test than in pretest.<br> <span style='font-weight:bold;'>Negative change:</span> Participants scored lower in post test than in pretest.</span>"
+
+# SN relative change
+plot_relative_change_sn
+```
+
+#### CHO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Relative Percentage Change</span>"
+#| fig-cap: "<span style='font-size:10px;'><span style='font-weight:bold;'>Relative percentage change:</span> Shows increase or decrease in post test scores compared to pre test scores.<br><span style='font-weight:bold;'>Positive change:</span> Participants scored higher in post test than in pretest.<br> <span style='font-weight:bold;'>Negative change:</span> Participants scored lower in post test than in pretest.</span>"
+
+# CHO relative change
+plot_relative_change_cho
+```
+
+#### ANM
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Relative Percentage Change</span>"
+#| fig-cap: "<span style='font-size:10px;'><span style='font-weight:bold;'>Relative percentage change:</span> Shows increase or decrease in post test scores compared to pre test scores.<br><span style='font-weight:bold;'>Positive change:</span> Participants scored higher in post test than in pretest.<br> <span style='font-weight:bold;'>Negative change:</span> Participants scored lower in post test than in pretest.</span>"
+
+# ANM relative change
+plot_relative_change_anm
+```
+
+## Row {.flow}
+
+### Column {.tabset}
+#### MO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>District-wise Analysis</span>"
+
+# MO district wise
+districtwise_combined_percentage_plot_mo
+```
+
+#### SN
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>District-wise Analysis</span>"
+
+# SN district wise
+districtwise_combined_percentage_plot_sn
+```
+
+#### CHO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>District-wise Analysis</span>"
+
+# CHO district wise
+districtwise_combined_percentage_plot_cho
+```
+
+#### ANM
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>District-wise Analysis</span>"
+
+# ANM district wise
+districtwise_combined_percentage_plot_anm
+```
+
+### Column {.tabset}
+#### MO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Question-wise Analysis</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Yellow- Test score below 50%</span>"
+
+# MO district wise
+df_questions_combined_mo_gt
+```
+
+#### SN
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Question-wise Analysis</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Yellow- Test score below 50%</span>"
+
+# SN district wise
+df_questions_combined_sn_gt
+```
+
+#### CHO
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Question-wise Analysis</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Yellow- Test score below 50%</span>"
+
+# CHO district wise
+df_questions_combined_cho_gt
+```
+
+#### ANM
+```{r}
+#| echo: false
+#| warning: false
+#| title: "<span style='font-size:14px;'>Question-wise Analysis</span>"
+#| fig-cap: "<span style='font-size:12px;'>*Yellow- Test score below 50%</span>"
+
+# ANM district wise
+df_questions_combined_anm_gt
+```
+
+
